@@ -11,7 +11,7 @@ from ReplayBuffer_v2 import ReplayBuffer
 from keras.layers import Dense, Dropout, Conv2D, Input, Lambda, Flatten, TimeDistributed, merge
 from keras.layers import Add, Reshape, MaxPooling2D, Concatenate, Embedding, RepeatVector
 from keras.models import Model
-from keras.layers.core import Activation
+from keras.layers import Activation
 from keras.utils import np_utils,to_categorical
 from keras.engine.topology import Layer
 from keras.callbacks import TensorBoard
