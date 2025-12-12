@@ -1,0 +1,80 @@
+_wandb:
+    value:
+        cli_version: 0.23.1
+        e:
+            qx1dove3u5skm0znzz9piapqtu0gxwvh:
+                codePath: Battle\multi_battle_modified.py
+                codePathLocal: multi_battle_modified.py
+                cpu_count: 8
+                cpu_count_logical: 16
+                cudaVersion: "13.0"
+                disk:
+                    /:
+                        total: "999300263936"
+                        used: "771896700928"
+                email: brunocdl9@gmail.com
+                executable: C:\Users\bruno\projetofinalgnn\DGN\venv\Scripts\python.exe
+                git:
+                    commit: e97a1c2daaabd709c1a0fad57c3e9a10ed733aa1
+                    remote: git@github.com:bruno20614/graph-marl.git
+                gpu: NVIDIA GeForce RTX 5070 Ti
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Blackwell
+                      cudaCores: 8960
+                      memoryTotal: "17094934528"
+                      name: NVIDIA GeForce RTX 5070 Ti
+                      uuid: GPU-d905a90c-141c-163b-dab0-9d52c0f2ea3c
+                host: PCBRUNO
+                memory:
+                    total: "34281021440"
+                os: Windows-10-10.0.26100-SP0
+                program: C:\Users\bruno\projetofinalgnn\DGN\Battle\multi_battle_modified.py
+                python: CPython 3.11.9
+                root: C:\Users\bruno\projetofinalgnn\DGN\Battle
+                startedAt: "2025-12-12T12:06:23.918571Z"
+                writerId: qx1dove3u5skm0znzz9piapqtu0gxwvh
+        m: []
+        python_version: 3.11.9
+        t:
+            "1":
+                - 1
+                - 77
+            "2":
+                - 1
+                - 77
+            "3":
+                - 3
+                - 16
+            "4": 3.11.9
+            "5": 0.23.1
+            "8":
+                - 3
+            "12": 0.23.1
+            "13": windows-amd64
+action_dim:
+    value: 9
+batch_size:
+    value: 256
+eps_decay:
+    value: 0.995
+eps_end:
+    value: 0.01
+eps_start:
+    value: 1
+gamma:
+    value: 0.99
+hidden_dim:
+    value: 128
+lr:
+    value: 1e-05
+map_size:
+    value: 45
+n_agent:
+    value: 20
+n_enemy:
+    value: 12
+real_input_dim:
+    value: 5
+tau:
+    value: 0.01

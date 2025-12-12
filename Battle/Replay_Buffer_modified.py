@@ -15,7 +15,6 @@ class ReplayBuffer:
 
         states, actions, rewards, next_states, dones, graphs = zip(*batch)
 
-        # Converter tudo para tensores PyTorch
         states      = torch.tensor(states, dtype=torch.float32)
         actions     = torch.tensor(actions, dtype=torch.long)
         rewards     = torch.tensor(rewards, dtype=torch.float32)

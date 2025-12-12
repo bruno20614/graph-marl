@@ -1,0 +1,40 @@
+{
+  "os":  "Windows-10-10.0.26100-SP0",
+  "python":  "CPython 3.11.9",
+  "startedAt":  "2025-12-12T12:06:23.918571Z",
+  "program":  "C:\\Users\\bruno\\projetofinalgnn\\DGN\\Battle\\multi_battle_modified.py",
+  "codePath":  "Battle\\multi_battle_modified.py",
+  "codePathLocal":  "multi_battle_modified.py",
+  "git":  {
+    "remote":  "git@github.com:bruno20614/graph-marl.git",
+    "commit":  "e97a1c2daaabd709c1a0fad57c3e9a10ed733aa1"
+  },
+  "email":  "brunocdl9@gmail.com",
+  "root":  "C:\\Users\\bruno\\projetofinalgnn\\DGN\\Battle",
+  "host":  "PCBRUNO",
+  "executable":  "C:\\Users\\bruno\\projetofinalgnn\\DGN\\venv\\Scripts\\python.exe",
+  "cpu_count":  8,
+  "cpu_count_logical":  16,
+  "gpu":  "NVIDIA GeForce RTX 5070 Ti",
+  "gpu_count":  1,
+  "disk":  {
+    "/":  {
+      "total":  "999300263936",
+      "used":  "771896700928"
+    }
+  },
+  "memory":  {
+    "total":  "34281021440"
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "NVIDIA GeForce RTX 5070 Ti",
+      "memoryTotal":  "17094934528",
+      "cudaCores":  8960,
+      "architecture":  "Blackwell",
+      "uuid":  "GPU-d905a90c-141c-163b-dab0-9d52c0f2ea3c"
+    }
+  ],
+  "cudaVersion":  "13.0",
+  "writerId":  "qx1dove3u5skm0znzz9piapqtu0gxwvh"
+}
