@@ -1,0 +1,43 @@
+_wandb:
+    value:
+        cli_version: 0.23.1
+        m: []
+        python_version: 3.13.11
+        t:
+            "1":
+                - 1
+                - 77
+            "3":
+                - 16
+            "4": 3.13.11
+            "5": 0.23.1
+            "10":
+                - 20
+            "12": 0.23.1
+            "13": linux-x86_64
+action_dim:
+    value: 9
+batch_size:
+    value: 64
+eps_decay:
+    value: 0.9995
+eps_end:
+    value: 0.01
+eps_start:
+    value: 1
+gamma:
+    value: 0.99
+hidden_dim:
+    value: 128
+lr:
+    value: 1e-05
+map_size:
+    value: 45
+n_agent:
+    value: 81
+n_enemy:
+    value: 12
+real_input_dim:
+    value: 5
+tau:
+    value: 0.001

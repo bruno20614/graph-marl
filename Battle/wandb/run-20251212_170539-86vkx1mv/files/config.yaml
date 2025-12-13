@@ -1,0 +1,70 @@
+_wandb:
+    value:
+        cli_version: 0.23.1
+        e:
+            qzmbtbafwtctakihueooa610yazpjxg9:
+                codePath: Battle/multi_battle_modified2.py
+                codePathLocal: multi_battle_modified2.py
+                cpu_count: 8
+                cpu_count_logical: 16
+                disk:
+                    /:
+                        total: "511034351616"
+                        used: "64205926400"
+                email: brunocdl9@gmail.com
+                executable: /home/brunolinux/graph_marl/graph-marl/venv/bin/python3
+                git:
+                    commit: 70ad1c0c6d642159fc41aa0269752af9d47a3c8f
+                    remote: https://github.com/bruno20614/graph-marl.git
+                host: archlinux
+                memory:
+                    total: "16109477888"
+                os: Linux-6.15.3-arch1-1-x86_64-with-glibc2.42
+                program: /home/brunolinux/graph_marl/graph-marl/Battle/multi_battle_modified2.py
+                python: CPython 3.13.11
+                root: /home/brunolinux/graph_marl/graph-marl/Battle
+                startedAt: "2025-12-12T20:05:39.488771Z"
+                writerId: qzmbtbafwtctakihueooa610yazpjxg9
+        m: []
+        python_version: 3.13.11
+        t:
+            "1":
+                - 1
+                - 77
+            "2":
+                - 1
+                - 77
+            "3":
+                - 16
+            "4": 3.13.11
+            "5": 0.23.1
+            "10":
+                - 20
+            "12": 0.23.1
+            "13": linux-x86_64
+action_dim:
+    value: 9
+batch_size:
+    value: 64
+eps_decay:
+    value: 0.9995
+eps_end:
+    value: 0.01
+eps_start:
+    value: 1
+gamma:
+    value: 0.99
+hidden_dim:
+    value: 128
+lr:
+    value: 1e-05
+map_size:
+    value: 45
+n_agent:
+    value: 20
+n_enemy:
+    value: 12
+real_input_dim:
+    value: 5
+tau:
+    value: 0.001

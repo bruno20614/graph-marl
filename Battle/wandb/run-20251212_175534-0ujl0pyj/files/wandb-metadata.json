@@ -1,0 +1,28 @@
+{
+  "os":  "Linux-6.15.3-arch1-1-x86_64-with-glibc2.42",
+  "python":  "CPython 3.13.11",
+  "startedAt":  "2025-12-12T20:55:34.037818Z",
+  "program":  "/home/brunolinux/graph_marl/graph-marl/Battle/multi_battle_modified2.py",
+  "codePath":  "Battle/multi_battle_modified2.py",
+  "codePathLocal":  "multi_battle_modified2.py",
+  "git":  {
+    "remote":  "https://github.com/bruno20614/graph-marl.git",
+    "commit":  "70ad1c0c6d642159fc41aa0269752af9d47a3c8f"
+  },
+  "email":  "brunocdl9@gmail.com",
+  "root":  "/home/brunolinux/graph_marl/graph-marl/Battle",
+  "host":  "archlinux",
+  "executable":  "/home/brunolinux/graph_marl/graph-marl/venv/bin/python3",
+  "cpu_count":  8,
+  "cpu_count_logical":  16,
+  "disk":  {
+    "/":  {
+      "total":  "511034351616",
+      "used":  "64203939840"
+    }
+  },
+  "memory":  {
+    "total":  "16109477888"
+  },
+  "writerId":  "p5qe6rpqjr48k051qkximrj9mn67wp89"
+}
