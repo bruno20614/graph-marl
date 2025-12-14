@@ -222,7 +222,6 @@ class FeatureMLP(nn.Module):
 class RelationGAT(nn.Module):
     def __init__(self, hidden_dim=HIDDEN_DIM, heads=4):
         super().__init__()
-        # Usando GATConv original
         self.gat1 = GATConv(hidden_dim, hidden_dim // heads, heads=heads, concat=True)
         self.gat2 = GATConv(hidden_dim, hidden_dim // heads, heads=heads, concat=True)
 
