@@ -25,7 +25,6 @@ HIDDEN_DIM = 128
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 TRAIN_EVERY = 8
 
-# KNN config
 K_START = 4
 K_MAX = 4
 K_GROW_EP = 5000
@@ -59,10 +58,7 @@ config = wandb.config
 # ==============================================================================
 
 def extract_positions_from_obs(obs_dict, agent_list, map_size=MAP_SIZE):
-    """
-    Extrai posições (x, y) dos agentes a partir do canal de observação.
-    O agente está sempre no centro do grid 13x13, então usamos isso como referência.
-    """
+
     positions = {}
     
     for name in agent_list:
@@ -77,7 +73,6 @@ def extract_positions_from_obs(obs_dict, agent_list, map_size=MAP_SIZE):
         x = (agent_idx % int(np.sqrt(len(agent_list)))) * (map_size / np.sqrt(len(agent_list)))
         y = (agent_idx // int(np.sqrt(len(agent_list)))) * (map_size / np.sqrt(len(agent_list)))
         
-        # Adicionar ruído baseado na observação para diferenciar
         own_channel = obs[:, :, 0]
         x_offset = np.argmax(own_channel.sum(axis=0)) - 6  # Centro em 6
         y_offset = np.argmax(own_channel.sum(axis=1)) - 6
@@ -91,9 +86,6 @@ def extract_positions_from_obs(obs_dict, agent_list, map_size=MAP_SIZE):
 
 
 def observation_to_tensor(obs_dict, agent_list, positions):
-    """
-    Converte observações em tensor COM coordenadas espaciais.
-    """
     N = len(agent_list)
     OBS_H, OBS_W, OBS_C = 13, 13, 5
     GRID_SIZE = OBS_H * OBS_W * OBS_C
@@ -112,25 +104,20 @@ def observation_to_tensor(obs_dict, agent_list, positions):
         if obs.shape != (OBS_H, OBS_W, OBS_C):
             continue
         
-        # Flatten do grid
         flat_obs = obs.reshape(-1)
         
-        # Adicionar coordenadas
         if name in positions:
             x, y = positions[name]
-            # Normalizar coordenadas para [0, 1]
             x_norm = x / MAP_SIZE
             y_norm = y / MAP_SIZE
             coords[i] = torch.tensor([x_norm, y_norm], dtype=torch.float32)
             
-            # Concatenar observação + coordenadas
             state[i] = torch.cat([
                 torch.tensor(flat_obs, dtype=torch.float32),
                 coords[i]
             ])
             alive_mask[i] = True
             
-            # Contar inimigos visíveis (canal 1)
             enemy_channel = obs[:, :, 1]
             enemies_visible[i] = (enemy_channel > 0).sum()
     
@@ -146,28 +133,22 @@ def compute_shaped_reward(base_rewards, enemies_visible_before, enemies_visible_
     
     shaped_rewards = torch.zeros_like(base_rewards)
     
-    # 1. Bônus por aumentar visibilidade (PESO AUMENTADO)
     visibility_increase = enemies_visible_after - enemies_visible_before
     shaped_rewards += visibility_increase * 0.5  # Era 0.01
     
-    # 2. Bônus por atacar com inimigos visíveis (PESO AUMENTADO)
     is_attack_action = (actions >= 9).float()
     has_enemies = (enemies_visible_before > 0).float()
     attack_bonus = is_attack_action * has_enemies * 1.0  # Era 0.05
     shaped_rewards += attack_bonus
     
-    # 3. Penalidade por ficar parado (PESO AUMENTADO)
     idle_penalty = (actions == 0).float() * -0.5  # Era -0.02
     shaped_rewards += idle_penalty
     
-    # 4. Bônus por formação (agentes próximos uns dos outros)
     if alive_mask.sum() > 1:
         alive_coords = coords[alive_mask]
         if alive_coords.shape[0] > 1:
-            # Calcular distância média entre agentes vivos
             dists = torch.cdist(alive_coords, alive_coords)
             avg_dist = dists[dists > 0].mean()
-            # Bônus se distância média for moderada (não muito longe, não muito perto)
             formation_bonus = torch.exp(-((avg_dist - 0.3) ** 2) / 0.1) * 0.2
             shaped_rewards[alive_mask] += formation_bonus
     
@@ -198,28 +179,22 @@ def build_spatial_knn_graph(coords, alive_mask, k=4, radius=KNN_RADIUS):
     if alive_idx.numel() <= 1:
         return torch.empty((2, 0), dtype=torch.long), alive_mask
     
-    # Coordenadas dos agentes vivos
     alive_coords = coords[alive_idx]  # (N_alive, 2)
     
-    # Calcular distâncias euclidianas entre todos os pares
     dists = torch.cdist(alive_coords, alive_coords)  # (N_alive, N_alive)
     
-    # Construir arestas
     rows, cols = [], []
     
     for i in range(alive_idx.numel()):
-        # Pegar distâncias do agente i para todos os outros
         dist_i = dists[i].clone()
-        dist_i[i] = float('inf')  # Ignorar si mesmo
+        dist_i[i] = float('inf')  
         
-        # Aplicar filtro de raio
         valid_neighbors = (dist_i <= radius)
 
         
         if valid_neighbors.sum() == 0:
             continue
         
-        # Pegar k vizinhos mais próximos dentro do raio
         dist_i[~valid_neighbors] = float('inf')
         _, nearest_k = torch.topk(dist_i, min(k, valid_neighbors.sum()), largest=False)
         
@@ -238,16 +213,12 @@ def build_spatial_knn_graph(coords, alive_mask, k=4, radius=KNN_RADIUS):
 
 
 def get_batch_graph(states_tensor, coords_tensor, k=4):
-    """
-    Cria batch de grafos COM remapeamento correto de índices.
-    """
+
     data_list = []
     
     for s, c in zip(states_tensor, coords_tensor):
-        # Máscara de agentes vivos
         alive_mask = (s.abs().sum(dim=1) > 1e-6)
         
-        # Construir grafo espacial
         edge_index_full, _ = build_spatial_knn_graph(c, alive_mask, k=k)
         
         alive_idx_global = alive_mask.nonzero(as_tuple=False).squeeze(1)
@@ -258,7 +229,6 @@ def get_batch_graph(states_tensor, coords_tensor, k=4):
         else:
             x = s[alive_idx_global]
             
-            # Remapear edge_index de global para local
             global_to_local = {g.item(): l for l, g in enumerate(alive_idx_global)}
             
             if edge_index_full.numel() > 0:
@@ -430,7 +400,6 @@ for ep in range(EPISODES):
         obs_agents_dict = {name: obs[name] for name in agent_list if name in obs}
         obs_enemies_dict = {name: obs[name] for name in enemy_list if name in obs}
         
-        # Extrair posições espaciais
         positions = extract_positions_from_obs(obs_agents_dict, agent_list)
         
         state, alive_mask_original, enemies_visible_before, coords = \
@@ -438,7 +407,6 @@ for ep in range(EPISODES):
         
         state_normalized = normalize_obs(state)
         
-        # Construir grafo KNN espacial
         edge_index, alive_mask_graph = build_spatial_knn_graph(coords, alive_mask_original, k=k)
         alive_idx_global = alive_mask_graph.nonzero(as_tuple=False).squeeze(1)
         num_agents_alive = alive_idx_global.numel()
@@ -450,7 +418,6 @@ for ep in range(EPISODES):
             with torch.no_grad():
                 x_nodes = state_normalized[alive_idx_global].to(DEVICE)
                 
-                # Remapear edge_index
                 if edge_index.numel() > 0:
                     global_to_local = {g.item(): l for l, g in enumerate(alive_idx_global)}
                     src_local = [global_to_local.get(s.item(), -1) for s in edge_index[0]]
@@ -469,51 +436,39 @@ for ep in range(EPISODES):
                 q_nodes = agent(x_nodes, ei)
             for i in range(num_agents_alive):
                 if ep < 100:
-                    # exploração total inicial
                     action_alive[i] = random.randint(0, ACTION_DIM - 1)
                 else:
-                    # ε-greedy normal
                     if random.random() < eps:
                         action_alive[i] = random.randint(0, ACTION_DIM - 1)
                     else:
                         action_alive[i] = torch.argmax(q_nodes[i]).item()
 
         
-        # --- BLOCO DE AÇÕES CORRIGIDO ---
         actions_dict = {}
         action_buffer = torch.zeros(N_AGENT, dtype=torch.long)
         
-        # Pegamos o conjunto de agentes que o ambiente REALMENTE espera agora
         current_env_agents = set(env.agents)
 
-        # 1. Preenche ações para seus agentes (Blue) que estão vivos no GNN e no Env
         for i, global_idx in enumerate(alive_idx_global.tolist()):
             agent_name = agent_list[global_idx]
             
-            # Só adiciona se o agente ainda estiver na lista oficial do MAgent2
             if agent_name in current_env_agents:
                 action = int(action_alive[i].item())
                 actions_dict[agent_name] = action
                 action_buffer[global_idx] = action
 
-        # 2. Preenche ações para os inimigos (Red) que estão vivos
         for name in enemy_list:
             if name in current_env_agents:
-                # É mais seguro usar o action_space do que np.random.randint
                 actions_dict[name] = env.action_space(name).sample()
 
-        # 3. VERIFICAÇÃO CRÍTICA: Se não há ações (todos morreram), interrompe o passo
         if not actions_dict:
             break
 
-        # Agora o step é seguro
         next_obs, reward, terminated, truncated, info = env.step(actions_dict)
         
-        # Simplifica o estado de 'terminado'
         done = terminated or truncated
         
 
-        # Próximo estado
         next_positions = extract_positions_from_obs(
             {name: next_obs[name] for name in agent_list if name in next_obs}, 
             agent_list
@@ -525,12 +480,10 @@ for ep in range(EPISODES):
             )
         next_state_normalized = normalize_obs(next_state)
         
-        # Rewards
         rewards_tensor = torch.zeros(N_AGENT, dtype=torch.float32)
         for i, name in enumerate(agent_list):
             rewards_tensor[i] = reward.get(name, 0.0)
         
-        # Reward Shaping CORRIGIDO
         shaped_rewards = compute_shaped_reward(
             rewards_tensor, 
             enemies_visible_before, 
@@ -540,7 +493,6 @@ for ep in range(EPISODES):
             alive_mask_original
         )
 
-        # ===== CORREÇÃO FUNDAMENTAL =====
         shaping_weight = max(0.05, 0.3 - ep / 3000)
         alive_count = alive_mask_original.sum().clamp(min=1)
         total_rewards = rewards_tensor + shaping_weight * (shaped_rewards / alive_count)
@@ -570,7 +522,6 @@ for ep in range(EPISODES):
         if agent_terminal:
             break
         
-        # ===== TREINAMENTO DDQN VETORIZADO (GPU FRIENDLY) =====
         if step % TRAIN_EVERY == 0 and len(buffer) > BATCH_SIZE:
             batch_samples = buffer.sample(BATCH_SIZE)
             
