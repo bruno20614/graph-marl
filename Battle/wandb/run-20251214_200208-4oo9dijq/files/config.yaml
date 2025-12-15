@@ -1,0 +1,65 @@
+_wandb:
+    value:
+        cli_version: 0.23.1
+        e:
+            fwvnxdc8rkppe0ww0ils6hzrb8aufacb:
+                codePath: Battle\multi_battle_modified5.py
+                codePathLocal: multi_battle_modified5.py
+                cpu_count: 8
+                cpu_count_logical: 16
+                cudaVersion: "13.0"
+                disk:
+                    /:
+                        total: "999300263936"
+                        used: "788823846912"
+                email: brunocdl9@gmail.com
+                executable: C:\Users\bruno\projetofinalgnn\DGN\venv\Scripts\python.exe
+                git:
+                    commit: 5d26c48a9bce62aa007e72fb43676d1a1b9f5f3b
+                    remote: git@github.com:bruno20614/graph-marl.git
+                gpu: NVIDIA GeForce RTX 5070 Ti
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Blackwell
+                      cudaCores: 8960
+                      memoryTotal: "17094934528"
+                      name: NVIDIA GeForce RTX 5070 Ti
+                      uuid: GPU-d905a90c-141c-163b-dab0-9d52c0f2ea3c
+                host: PCBRUNO
+                memory:
+                    total: "34281021440"
+                os: Windows-10-10.0.26100-SP0
+                program: C:\Users\bruno\projetofinalgnn\DGN\Battle\multi_battle_modified5.py
+                python: CPython 3.11.9
+                root: C:\Users\bruno\projetofinalgnn\DGN\Battle
+                startedAt: "2025-12-14T23:02:08.403777Z"
+                writerId: fwvnxdc8rkppe0ww0ils6hzrb8aufacb
+        m: []
+        python_version: 3.11.9
+        t:
+            "1":
+                - 1
+                - 77
+            "2":
+                - 1
+                - 77
+            "3":
+                - 13
+                - 16
+                - 24
+            "4": 3.11.9
+            "5": 0.23.1
+            "8":
+                - 3
+            "12": 0.23.1
+            "13": windows-amd64
+gamma:
+    value: 0.99
+hidden_dim:
+    value: 128
+lr:
+    value: 0.0005
+map_size:
+    value: 45
+max_steps:
+    value: 160

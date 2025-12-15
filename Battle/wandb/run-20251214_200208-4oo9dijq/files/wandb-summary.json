@@ -1,0 +1,1 @@
+{"_runtime":2820,"_timestamp":1.7657561524927442e+09,"loss":0.01666991226375103,"_wandb":{"runtime":2820},"shaped_reward":25.114745926111937,"q_mean":0.739887535572052,"k_neighbors":4,"episode":135,"total_reward":-2.785016071051359,"epsilon":0.7557784508117166,"_step":2848}

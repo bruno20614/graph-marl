@@ -13,22 +13,23 @@ MAP_SIZE = 45
 ACTION_DIM = 21
 GAMMA = 0.99
 LR = 5e-4
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 TAU = 0.01
-EPISODES = 100000
-MAX_STEPS = 300
+EPISODES = 3000
+MAX_STEPS = 160
 EPS_START = 1.0
-EPS_END = 0.5
+EPS_END = 0.1
 EPS_DECAY = 0.99995
 REAL_INPUT_DIM = 845 + 2  # 13*13*5 + coordenadas (x,y)
-HIDDEN_DIM = 256
+HIDDEN_DIM = 128
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+TRAIN_EVERY = 8
 
 # KNN config
 K_START = 4
-K_MAX = 16
+K_MAX = 4
 K_GROW_EP = 5000
-KNN_RADIUS = 10.0  # Raio máximo para conexões
+KNN_RADIUS = 0.25
 
 print(f"\n{'='*80}")
 print(f"DGN-MAGENT - VERSÃO CORRIGIDA")
@@ -38,18 +39,19 @@ print(f"Input Dim: {REAL_INPUT_DIM} (obs + coords) | Actions: {ACTION_DIM}")
 print(f"Grafo: KNN Espacial com raio {KNN_RADIUS}")
 print(f"{'='*80}\n")
 
-class MockWandB:
-    def __init__(self):
-        self.config = {}
-    def init(self, **kwargs):
-        if 'config' in kwargs:
-            self.config.update(kwargs['config'])
-    def log(self, *args, **kwargs): 
-        pass
-    def save(self, *args): 
-        pass
+wandb.init(
+    project="DGN-MAGENT",
+    name="dgn_shaped_knn",
+    config={
+        "map_size": MAP_SIZE,
+        "lr": LR,
+        "gamma": GAMMA,
+        "hidden_dim": HIDDEN_DIM,
+        "max_steps": MAX_STEPS
+    }
+)
 
-wandb = MockWandB()
+
 config = wandb.config
 
 # ==============================================================================
@@ -142,7 +144,7 @@ def observation_to_tensor(obs_dict, agent_list, positions):
 def compute_shaped_reward(base_rewards, enemies_visible_before, enemies_visible_after, 
                           actions, coords, alive_mask):
     
-    shaped_rewards = base_rewards.clone()
+    shaped_rewards = torch.zeros_like(base_rewards)
     
     # 1. Bônus por aumentar visibilidade (PESO AUMENTADO)
     visibility_increase = enemies_visible_after - enemies_visible_before
@@ -211,7 +213,8 @@ def build_spatial_knn_graph(coords, alive_mask, k=4, radius=KNN_RADIUS):
         dist_i[i] = float('inf')  # Ignorar si mesmo
         
         # Aplicar filtro de raio
-        valid_neighbors = (dist_i <= radius / MAP_SIZE)  # Normalizado
+        valid_neighbors = (dist_i <= radius)
+
         
         if valid_neighbors.sum() == 0:
             continue
@@ -283,17 +286,10 @@ def get_batch_graph(states_tensor, coords_tensor, k=4):
     return Batch.from_data_list(data_list)
 
 
-# ==============================================================================
-# EXPLORAÇÃO GUIADA
-# ==============================================================================
-
+# ===================== EXPLORAÇÃO GUIADA =====================
 def guided_exploration_action(ep, q_values):
-    """Primeiros episódios forçam movimento/ataque."""
     if ep < 100:
-        if random.random() < 0.5:
-            return random.randint(1, 8)  # Movimento
-        else:
-            return random.randint(9, ACTION_DIM - 1)  # Ataque
+        return random.randint(0, ACTION_DIM - 1)
     else:
         return torch.argmax(q_values).item()
 
@@ -321,7 +317,7 @@ class FeatureMLP(nn.Module):
 
 
 class RelationGAT(nn.Module):
-    def __init__(self, hidden_dim=HIDDEN_DIM, heads=4):
+    def __init__(self, hidden_dim=HIDDEN_DIM, heads=2):
         super().__init__()
         self.gat1 = GATConv(hidden_dim, hidden_dim // heads, heads=heads, concat=True)
         self.gat2 = GATConv(hidden_dim, hidden_dim // heads, heads=heads, concat=True)
@@ -428,8 +424,8 @@ for ep in range(EPISODES):
     
     total_reward = 0.0
     shaped_reward_sum = 0.0
-    k = K_START + int((K_MAX - K_START) * min(1.0, ep / K_GROW_EP))
-    
+    #k = K_START + int((K_MAX - K_START) * min(1.0, ep / K_GROW_EP))
+    k = 4
     for step in range(MAX_STEPS):
         obs_agents_dict = {name: obs[name] for name in agent_list if name in obs}
         obs_enemies_dict = {name: obs[name] for name in enemy_list if name in obs}
@@ -471,29 +467,52 @@ for ep in range(EPISODES):
                     ei = torch.empty((2, 0), dtype=torch.long).to(DEVICE)
                 
                 q_nodes = agent(x_nodes, ei)
-            
             for i in range(num_agents_alive):
-                if random.random() < eps:
-                    action_alive[i] = guided_exploration_action(ep, q_nodes[i].cpu())
+                if ep < 100:
+                    # exploração total inicial
+                    action_alive[i] = random.randint(0, ACTION_DIM - 1)
                 else:
-                    action_alive[i] = torch.argmax(q_nodes[i].cpu())
+                    # ε-greedy normal
+                    if random.random() < eps:
+                        action_alive[i] = random.randint(0, ACTION_DIM - 1)
+                    else:
+                        action_alive[i] = torch.argmax(q_nodes[i]).item()
+
         
+        # --- BLOCO DE AÇÕES CORRIGIDO ---
         actions_dict = {}
         action_buffer = torch.zeros(N_AGENT, dtype=torch.long)
         
+        # Pegamos o conjunto de agentes que o ambiente REALMENTE espera agora
+        current_env_agents = set(env.agents)
+
+        # 1. Preenche ações para seus agentes (Blue) que estão vivos no GNN e no Env
         for i, global_idx in enumerate(alive_idx_global.tolist()):
             agent_name = agent_list[global_idx]
-            action = int(action_alive[i].item())
-            actions_dict[agent_name] = action
-            action_buffer[global_idx] = action
-        
+            
+            # Só adiciona se o agente ainda estiver na lista oficial do MAgent2
+            if agent_name in current_env_agents:
+                action = int(action_alive[i].item())
+                actions_dict[agent_name] = action
+                action_buffer[global_idx] = action
+
+        # 2. Preenche ações para os inimigos (Red) que estão vivos
         for name in enemy_list:
-            if name in obs:
-                actions_dict[name] = np.random.randint(0, ACTION_DIM)
-        
+            if name in current_env_agents:
+                # É mais seguro usar o action_space do que np.random.randint
+                actions_dict[name] = env.action_space(name).sample()
+
+        # 3. VERIFICAÇÃO CRÍTICA: Se não há ações (todos morreram), interrompe o passo
+        if not actions_dict:
+            break
+
+        # Agora o step é seguro
         next_obs, reward, terminated, truncated, info = env.step(actions_dict)
-        done = terminated
         
+        # Simplifica o estado de 'terminado'
+        done = terminated or truncated
+        
+
         # Próximo estado
         next_positions = extract_positions_from_obs(
             {name: next_obs[name] for name in agent_list if name in next_obs}, 
@@ -520,116 +539,89 @@ for ep in range(EPISODES):
             coords,
             alive_mask_original
         )
+
+        # ===== CORREÇÃO FUNDAMENTAL =====
+        shaping_weight = max(0.05, 0.3 - ep / 3000)
+        alive_count = alive_mask_original.sum().clamp(min=1)
+        total_rewards = rewards_tensor + shaping_weight * (shaped_rewards / alive_count)
+
+        agent_terminal = len([a for a in agent_list if a in next_obs]) == 0
+
         
-        agent_terminal = done.get(agent_list[0], False) or truncated.get(agent_list[0], False)
+        buffer.add(
+            state_normalized,
+            action_buffer,
+            next_state_normalized, 
+            total_rewards,  
+            agent_terminal,
+            coords,
+            coords_next
+        )
+
         
-        buffer.add(state_normalized, action_buffer, next_state_normalized, 
-                   shaped_rewards, agent_terminal, coords, coords_next)
-        
-        eps = max(EPS_END, eps * EPS_DECAY)
+        if ep >= 100:
+            eps = max(EPS_END, eps * EPS_DECAY)
+
         obs = next_obs
-        total_reward += sum(reward.values()) if reward else 0
-        shaped_reward_sum += shaped_rewards.sum().item()
+        total_reward += sum(reward.get(a, 0.0) for a in agent_list)
+        shaped_reward_sum += (shaping_weight * (shaped_rewards / alive_count)).sum().item()
+
         
         if agent_terminal:
             break
         
-        # ===== TREINAMENTO DDQN CORRIGIDO =====
-        if len(buffer) > BATCH_SIZE:
+        # ===== TREINAMENTO DDQN VETORIZADO (GPU FRIENDLY) =====
+        if step % TRAIN_EVERY == 0 and len(buffer) > BATCH_SIZE:
             batch_samples = buffer.sample(BATCH_SIZE)
-            states = torch.stack([b[0] for b in batch_samples])
-            actions = torch.stack([b[1] for b in batch_samples])
-            next_states = torch.stack([b[2] for b in batch_samples])
-            rewards = torch.stack([b[3] for b in batch_samples])
-            dones = torch.tensor([b[4] for b in batch_samples], dtype=torch.float32)
+            
+            states = torch.stack([b[0] for b in batch_samples]).to(DEVICE)
+            actions = torch.stack([b[1] for b in batch_samples]).to(DEVICE)
+            next_states = torch.stack([b[2] for b in batch_samples]).to(DEVICE)
+            rewards = torch.stack([b[3] for b in batch_samples]).to(DEVICE)
+            dones = torch.tensor([b[4] for b in batch_samples], dtype=torch.float32).to(DEVICE)
             coords_batch = torch.stack([b[5] for b in batch_samples])
             coords_next_batch = torch.stack([b[6] for b in batch_samples])
             
-            # Criar batch graphs COM coordenadas
-            batch_graph = get_batch_graph(states, coords_batch, k=k)
-            batch_graph_next = get_batch_graph(next_states, coords_next_batch, k=k)
+            batch_graph = get_batch_graph(states.cpu(), coords_batch, k=k).to(DEVICE)
+            batch_graph_next = get_batch_graph(next_states.cpu(), coords_next_batch, k=k).to(DEVICE)
             
             agent.train()
             
-            q_pred_list = []
-            q_target_list = []
+            q_values_all = agent(batch_graph.x, batch_graph.edge_index)
             
-            # PROCESSAR GRAFO POR GRAFO (CORRIGIDO)
-            for b_i in range(states.size(0)):
-                alive_mask_b = batch_graph.alive_mask[b_i]
-                alive_idx_b = alive_mask_b.nonzero(as_tuple=False).squeeze(1)
-                num_alive = alive_idx_b.numel()
-                
-                if num_alive == 0:
-                    continue
-                
-                # Extrair subgrafo para amostra b_i
-                ptr = batch_graph.ptr.cpu().numpy()
-                start_n = int(ptr[b_i])
-                end_n = int(ptr[b_i + 1])
-                
-                x_b = batch_graph.x[start_n:end_n].to(DEVICE)
-                
-                # Extrair arestas do subgrafo
-                mask = (batch_graph.batch == b_i)
-                edge_mask = mask[batch_graph.edge_index[0]]
-                ei_b = batch_graph.edge_index[:, edge_mask].to(DEVICE)
-                
-                # Ajustar índices para começar de 0
-                if ei_b.numel() > 0:
-                    ei_b = ei_b - start_n
-                
-                # Q-values online (agent)
-                q_nodes = agent(x_b, ei_b)
-                
-                chosen_actions = actions[b_i][alive_idx_b].to(DEVICE)
-                q_pred_vals = q_nodes.gather(1, chosen_actions.unsqueeze(1)).squeeze(1)
-                
-                # Q-values target
-                ptr_next = batch_graph_next.ptr.cpu().numpy()
-                start_next = int(ptr_next[b_i])
-                end_next = int(ptr_next[b_i + 1])
-                
-                x_next_b = batch_graph_next.x[start_next:end_next].to(DEVICE)
-                
-                mask_next = (batch_graph_next.batch == b_i)
-                edge_mask_next = mask_next[batch_graph_next.edge_index[0]]
-                ei_next_b = batch_graph_next.edge_index[:, edge_mask_next].to(DEVICE)
-                
-                if ei_next_b.numel() > 0:
-                    ei_next_b = ei_next_b - start_next
-                
-                with torch.no_grad():
-                    # Double DQN: online seleciona, target avalia
-                    q_next_online = agent(x_next_b, ei_next_b)
-                    best_next_actions = q_next_online.max(dim=1)[1]
-                    
-                    q_next_target = target_agent(x_next_b, ei_next_b)
-                    q_next_vals = q_next_target.gather(1, best_next_actions.unsqueeze(1)).squeeze(1)
-                
-                rewards_alive = rewards[b_i][alive_idx_b].to(DEVICE)
-                done_flag = dones[b_i].to(DEVICE)
-                
-                q_target_vals = rewards_alive + GAMMA * q_next_vals * (1.0 - done_flag)
-                
-                q_pred_list.append(q_pred_vals)
-                q_target_list.append(q_target_vals)
+            flat_actions = actions[batch_graph.alive_mask.view(BATCH_SIZE, N_AGENT)]
+            q_pred = q_values_all.gather(1, flat_actions.unsqueeze(1)).squeeze(1)
             
-            if len(q_pred_list) == 0:
-                continue
+            with torch.no_grad():
+                q_next_online = agent(batch_graph_next.x, batch_graph_next.edge_index)
+                next_actions = q_next_online.argmax(dim=1, keepdim=True)
+                
+                q_next_target_all = target_agent(batch_graph_next.x, batch_graph_next.edge_index)
+                q_next_max_all = q_next_target_all.gather(1, next_actions).squeeze(1)
+
+            mask_t = batch_graph.alive_mask.view(-1)
+            mask_t_plus_1 = batch_graph_next.alive_mask.view(-1)
+            survived_mask = mask_t_plus_1[mask_t]
             
-            q_pred_all = torch.cat(q_pred_list)
-            q_target_all = torch.cat(q_target_list)
+            q_next_aligned = torch.zeros(q_pred.size(0), device=DEVICE)
+            q_next_aligned[survived_mask] = q_next_max_all
             
-            loss = F.mse_loss(q_pred_all, q_target_all)
+            flat_rewards = rewards.view(-1)[mask_t]
+            nodes_per_graph = torch.bincount(batch_graph.batch)
+            flat_dones = torch.repeat_interleave(dones, nodes_per_graph)
+            
+            q_target = flat_rewards + (GAMMA * q_next_aligned * (1.0 - flat_dones))
+            
+            loss = F.mse_loss(q_pred, q_target)
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(agent.parameters(), max_norm=10.0)
             optimizer.step()
             
             soft_update(agent, target_agent, TAU)
+
             
-            wandb.log({"loss": loss.item(), "episode": ep, "q_mean": q_pred_all.mean().item()})
+            wandb.log({"loss": loss.item(), "episode": ep, "q_mean": q_pred.mean().item()})
     
     print(f"Ep {ep:05d} | Base R: {total_reward:7.2f} | Shaped R: {shaped_reward_sum:7.2f} | ε: {eps:.4f} | k: {k}")
     wandb.log({
