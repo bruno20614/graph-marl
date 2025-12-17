@@ -125,7 +125,7 @@ def observation_to_tensor(obs_dict, agent_list, positions):
 
 
 # ==============================================================================
-# REWARD SHAPING CORRIGIDO
+# REWARD SHAPING 
 # ==============================================================================
 
 def compute_shaped_reward(base_rewards, enemies_visible_before, enemies_visible_after, 
@@ -166,7 +166,7 @@ def normalize_obs(x):
 
 
 # ==============================================================================
-# GRAFO KNN ESPACIAL (CORRIGIDO)
+# GRAFO KNN ESPACIAL 
 # ==============================================================================
 
 def build_spatial_knn_graph(coords, alive_mask, k=4, radius=KNN_RADIUS):
@@ -386,7 +386,7 @@ def soft_update(local_model, target_model, tau):
 
 
 # ==============================================================================
-# LOOP DE TREINO (CORRIGIDO)
+# LOOP DE TREINO 
 # ==============================================================================
 
 for ep in range(EPISODES):
