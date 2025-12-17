@@ -20,7 +20,7 @@ MAX_STEPS = 160
 EPS_START = 1.0
 EPS_END = 0.1
 EPS_DECAY = 0.99995
-REAL_INPUT_DIM = 845 + 2  # 13*13*5 + coordenadas (x,y)
+REAL_INPUT_DIM = 845 + 2  
 HIDDEN_DIM = 128
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 TRAIN_EVERY = 8
@@ -53,9 +53,7 @@ wandb.init(
 
 config = wandb.config
 
-# ==============================================================================
 # EXTRAÇÃO DE POSIÇÕES E OBSERVAÇÕES
-# ==============================================================================
 
 def extract_positions_from_obs(obs_dict, agent_list, map_size=MAP_SIZE):
 
@@ -90,7 +88,7 @@ def observation_to_tensor(obs_dict, agent_list, positions):
     OBS_H, OBS_W, OBS_C = 13, 13, 5
     GRID_SIZE = OBS_H * OBS_W * OBS_C
     
-    state = torch.zeros((N, GRID_SIZE + 2), dtype=torch.float32)  # +2 para (x,y)
+    state = torch.zeros((N, GRID_SIZE + 2), dtype=torch.float32)  
     alive_mask = torch.zeros(N, dtype=torch.bool)
     enemies_visible = torch.zeros(N, dtype=torch.float32)
     coords = torch.zeros((N, 2), dtype=torch.float32)
@@ -124,9 +122,7 @@ def observation_to_tensor(obs_dict, agent_list, positions):
     return state, alive_mask, enemies_visible, coords
 
 
-# ==============================================================================
 # REWARD SHAPING 
-# ==============================================================================
 
 def compute_shaped_reward(base_rewards, enemies_visible_before, enemies_visible_after, 
                           actions, coords, alive_mask):
@@ -165,9 +161,7 @@ def normalize_obs(x):
     return x
 
 
-# ==============================================================================
 # GRAFO KNN ESPACIAL 
-# ==============================================================================
 
 def build_spatial_knn_graph(coords, alive_mask, k=4, radius=KNN_RADIUS):
 
@@ -264,9 +258,7 @@ def guided_exploration_action(ep, q_values):
         return torch.argmax(q_values).item()
 
 
-# ==============================================================================
-# MODELOS (IGUAIS)
-# ==============================================================================
+# MODELOS 
 
 class FeatureMLP(nn.Module):
     def __init__(self, input_dim=REAL_INPUT_DIM, hidden_dim=HIDDEN_DIM):
@@ -328,9 +320,7 @@ class DGNAgent(nn.Module):
         return q
 
 
-# ==============================================================================
 # REPLAY BUFFER
-# ==============================================================================
 
 class ReplayBuffer:
     def __init__(self, capacity=200000):
@@ -356,9 +346,7 @@ class ReplayBuffer:
         return len(self.buffer)
 
 
-# ==============================================================================
 # INICIALIZAÇÃO
-# ==============================================================================
 
 env = parallel_env(map_size=MAP_SIZE, max_cycles=MAX_STEPS, render_mode="none")
 obs_reset = env.reset()
@@ -385,9 +373,7 @@ def soft_update(local_model, target_model, tau):
         target_param.data.copy_(tau * param.data + (1.0 - tau) * target_param.data)
 
 
-# ==============================================================================
 # LOOP DE TREINO 
-# ==============================================================================
 
 for ep in range(EPISODES):
     obs = obs_reset if ep == 0 else env.reset()
